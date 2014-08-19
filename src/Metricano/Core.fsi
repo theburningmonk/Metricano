@@ -13,7 +13,6 @@ type Metric =
         Name                : string
         TimeStamp           : DateTime
         Unit                : string
-        Namespace           : string
         mutable Average     : double
         mutable Sum         : double
         mutable Max         : double
@@ -21,14 +20,13 @@ type Metric =
         mutable Count       : double
     }
 
+[<Class>]
 type MetricsAgent =
-    new : string -> MetricsAgent
-    
-    member RecordTimeSpanMetric   : string * TimeSpan -> unit
-    member IncrementCountMetric   : string -> unit
-    member IncrementCountMetricBy : string * int64 -> unit
-    member SetCountMetric         : string * int64 -> unit
-    member Flush                  : unit -> Task<Metric[]>
+    static member RecordTimeSpanMetric   : string * TimeSpan -> unit
+    static member IncrementCountMetric   : string -> unit
+    static member IncrementCountMetricBy : string * int64 -> unit
+    static member SetCountMetric         : string * int64 -> unit
+    static member Flush                  : unit -> Task<Metric[]>
 
 type IMetricsPublisher =
     abstract member Publish : Metric[] -> unit

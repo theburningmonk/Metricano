@@ -33,7 +33,6 @@ type Metric =
         Name                : string
         TimeStamp           : DateTime
         Unit                : string
-        Namespace           : string
         mutable Average     : double
         mutable Sum         : double
         mutable Max         : double
@@ -41,12 +40,11 @@ type Metric =
         mutable Count       : double
     }
 
-    static member Create ns metricType name timestamp unit = 
+    static member Create metricType name timestamp unit = 
         {
             Type        = metricType
             Name        = name
             Unit        = unit
-            Namespace   = ns + "/" + metricType.ToString()
             TimeStamp   = timestamp
             Average     = 0.0
             Sum         = 0.0
@@ -95,11 +93,11 @@ type Message = | TimeSpan   of DateTime * string * TimeSpan
                | SetCount   of DateTime * string * int64
                | Flush      of AsyncReplyChannel<Metric[]>
 
-type MetricsAgent (ns : string) =
+type MetricsAgent private () =
     static let getPeriodId (dt : DateTime) = uint64 <| dt.ToString("yyyyMMddHHmm")
 
     // the main message processing agent
-    let agent = Agent<Message>.StartSupervised(fun inbox ->
+    static let agent = Agent<Message>.StartSupervised(fun inbox ->
         let metricsData = new Dictionary<uint64 * MetricType * string, Metric>()
         
         // registers a TimeSpan metric
@@ -108,7 +106,7 @@ type MetricsAgent (ns : string) =
             match metricsData.TryGetValue key with
             | true, metric -> metric += timespan
             | false, _ -> 
-                let metric = Metric.Create ns MetricType.TimeSpan metricName timestamp "Milliseconds"
+                let metric = Metric.Create MetricType.TimeSpan metricName timestamp "Milliseconds"
                 metric += timespan
                 metricsData.[key] <- metric
 
@@ -118,7 +116,7 @@ type MetricsAgent (ns : string) =
             match metricsData.TryGetValue key with
             | true, metric -> update metric (float count)
             | false, _ -> 
-                let metric = Metric.Create ns MetricType.Count metricName timestamp "Count"
+                let metric = Metric.Create MetricType.Count metricName timestamp "Count"
                 metric ++ float count
                 metricsData.[key] <- metric
 
@@ -147,19 +145,19 @@ type MetricsAgent (ns : string) =
 
         loop())
 
-    member this.RecordTimeSpanMetric (metricName, timespan) = 
+    static member RecordTimeSpanMetric (metricName, timespan) = 
         TimeSpan(DateTime.UtcNow, metricName, timespan) |> agent.Post
 
-    member this.IncrementCountMetric (metricName) =
+    static member IncrementCountMetric (metricName) =
         IncrCount(DateTime.UtcNow, metricName, 1L) |> agent.Post
 
-    member this.IncrementCountMetricBy (metricName, n) =
+    static member IncrementCountMetricBy (metricName, n) =
         IncrCount(DateTime.UtcNow, metricName, n) |> agent.Post
 
-    member this.SetCountMetric (metricName, n) =
+    static member SetCountMetric (metricName, n) =
         SetCount(DateTime.UtcNow, metricName, n) |> agent.Post
 
-    member this.Flush () = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
+    static member Flush () = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
 type IMetricsPublisher =
     abstract member Publish : Metric[] -> unit
