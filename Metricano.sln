@@ -1,16 +1,24 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Metricano", "Metricano.fsproj", "{327A90DA-7629-4D89-B0D1-F64F6EB63A8C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Metricano", "src\Metricano\Metricano.fsproj", "{327A90DA-7629-4D89-B0D1-F64F6EB63A8C}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{61F2E7E8-E74B-4785-9D99-CF459036DB36}"
 	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\NuGet.exe = .nuget\NuGet.exe
-		.nuget\NuGet.targets = .nuget\NuGet.targets
+		src\Metricano\.nuget\NuGet.Config = src\Metricano\.nuget\NuGet.Config
+		src\Metricano\.nuget\NuGet.exe = src\Metricano\.nuget\NuGet.exe
+		src\Metricano\.nuget\NuGet.targets = src\Metricano\.nuget\NuGet.targets
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Metricano.Tests", "..\..\tests\Metricano.Tests\Metricano.Tests.fsproj", "{26E2FB47-14C5-4E14-8887-4AA88365ABC0}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Metricano.Tests", "tests\Metricano.Tests\Metricano.Tests.fsproj", "{26E2FB47-14C5-4E14-8887-4AA88365ABC0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2E55C093-B029-4B50-9269-373FD9ED1609}"
+	ProjectSection(SolutionItems) = preProject
+		build.fsx = build.fsx
+		nuget\Metricano.nuspec = nuget\Metricano.nuspec
+		README.md = README.md
+		RELEASE_NOTES.md = RELEASE_NOTES.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
