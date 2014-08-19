@@ -10,7 +10,6 @@ open Fake.ReleaseNotesHelper
 open System
 
 let buildDir = "build/"
-let cliDir   = "cli/"
 let testDir  = "test/"
 let tempDir  = "temp/"
 
@@ -75,7 +74,7 @@ Target "AssemblyInfo" (fun _ ->
 Target "RestorePackages" RestorePackages
 
 Target "Clean" (fun _ ->
-    CleanDirs [ buildDir; cliDir; testDir; tempDir ]
+    CleanDirs [ buildDir; testDir; tempDir ]
 )
 
 Target "CleanDocs" (fun _ ->
