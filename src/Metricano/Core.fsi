@@ -26,7 +26,7 @@ type MetricsAgent =
     static member IncrementCountMetric   : string -> unit
     static member IncrementCountMetricBy : string * int64 -> unit
     static member SetCountMetric         : string * int64 -> unit
-    static member Flush                  : unit -> Task<Metric[]>
+    static member internal Flush         : unit -> Task<Metric[]>
 
 type IMetricsPublisher =
-    abstract member Publish : Metric[] -> unit
+    abstract member Publish : Metric[] -> Task

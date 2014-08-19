@@ -3,6 +3,7 @@
 open System
 open System.Collections.Generic
 open System.Threading
+open System.Threading.Tasks
 
 /// Type alias for F# mailbox processor type
 type Agent<'T> = MailboxProcessor<'T>
@@ -160,4 +161,4 @@ type MetricsAgent private () =
     static member Flush () = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
 type IMetricsPublisher =
-    abstract member Publish : Metric[] -> unit
+    abstract member Publish : Metric[] -> Task
