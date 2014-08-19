@@ -90,7 +90,6 @@ type Metric =
         metric.Count      <- metric.Count + 1.0
         metric.Average    <- metric.Sum / metric.Count
         
-
 type Message = | TimeSpan   of DateTime * string * TimeSpan
                | IncrCount  of DateTime * string * int64
                | SetCount   of DateTime * string * int64
@@ -161,3 +160,6 @@ type MetricsAgent (ns : string) =
         SetCount(DateTime.UtcNow, metricName, n) |> agent.Post
 
     member this.Flush () = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
+
+type IMetricsPublisher =
+    abstract member Publish : Metric[] -> unit
