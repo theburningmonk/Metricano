@@ -109,7 +109,7 @@ Target "RunTests" (fun _ ->
         { p with
             DisableShadowCopy = true
             TimeOut = TimeSpan.FromMinutes 5.
-            OutputFile = "TestResults.xml" })
+            OutputFile = "test/TestResults.xml" })
 )
 
 FinalTarget "CloseTestRunner" (fun _ ->  
