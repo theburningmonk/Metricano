@@ -52,4 +52,6 @@ type MetricsAgent =
     static member internal Flush         : unit -> Task<Metric[]>
 
 type IMetricsPublisher =
+    inherit IDisposable
+
     abstract member Publish : Metric[] -> Task

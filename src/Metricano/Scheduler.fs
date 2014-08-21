@@ -4,7 +4,7 @@ open System
 open System.Collections.Concurrent
 open System.Threading
 
-[<AutoOpen>]
+[<RequireQualifiedAccess>]
 module Publish =
     let stopped    = ref 0L
     let publishers = new ConcurrentBag<IMetricsPublisher>()
@@ -26,6 +26,7 @@ module Publish =
     [<Microsoft.FSharp.Core.CompiledNameAttribute("Stop")>]
     let stop () =
         match Interlocked.Increment(stopped) with
-        | 1L -> flush()
-                timer.Dispose()
+        | 1L -> timer.Dispose()
+                flush()
+                publishers.ToArray() |> Array.iter (fun pub -> pub.Dispose())
         | _  -> ()

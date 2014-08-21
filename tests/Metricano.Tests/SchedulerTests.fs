@@ -16,7 +16,8 @@ type ``Publish tests`` () =
         let publisher = { new IMetricsPublisher with
                             member this.Publish metrics' = 
                                 metrics := metrics'
-                                Task.Delay(1) }
+                                Task.Delay(1)
+                            member this.Dispose() = () }
         Publish.pubWith(publisher)
 
         MetricsAgent.SetCountMetric("CountMetricA", 1500L)

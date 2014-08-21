@@ -2,7 +2,7 @@
 
 open System
 
-[<AutoOpen>]
+[<RequireQualifiedAccess>]
 module Publish =
     [<Microsoft.FSharp.Core.CompiledNameAttribute("Interval")>]
     val interval : TimeSpan

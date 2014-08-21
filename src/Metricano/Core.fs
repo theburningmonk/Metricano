@@ -5,24 +5,7 @@ open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
 
-/// Type alias for F# mailbox processor type
-type Agent<'T> = MailboxProcessor<'T>
-
-[<AutoOpen>]
-module AgentExt =
-    type MailboxProcessor<'T> with
-        static member StartSupervised (body               : MailboxProcessor<_> -> Async<unit>, 
-                                       ?cancellationToken : CancellationToken,
-                                       ?onRestart         : Exception -> unit) = 
-            let watchdog f x = async {
-                while true do
-                    let! result = Async.Catch(f x)
-                    match result, onRestart with
-                    | Choice2Of2 exn, Some g -> g(exn)
-                    | _ -> ()                    
-            }
-
-            Agent.Start((fun inbox -> watchdog body inbox), ?cancellationToken = cancellationToken)
+open Metricano.Extensions
 
 type MetricType =
     | TimeSpan = 1uy
@@ -215,4 +198,6 @@ type MetricsAgent private () =
     static member Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
 type IMetricsPublisher =
+    inherit IDisposable
+
     abstract member Publish : Metric[] -> Task

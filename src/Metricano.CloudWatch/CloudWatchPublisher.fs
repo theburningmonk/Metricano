@@ -3,11 +3,16 @@
 open System
 open System.Collections.Generic
 open System.Linq
+open System.Threading
 open System.Threading.Tasks
 
 open Metricano
+open Metricano.Extensions
 open Amazon.CloudWatch
 open Amazon.CloudWatch.Model
+
+/// Exception that's thrown when attempting to merge two MetricDatum that cannot be merged
+exception MetricDatumMismatch of MetricDatum * MetricDatum
 
 [<AutoOpen>]
 module Seq =
@@ -38,7 +43,7 @@ module Extensions =
             Task.Factory.StartNew(fun () -> work |> Async.RunSynchronously)
 
     type Metricano.Metric with
-        member this.ToMetricData () =
+        member this.ToMetricDatum () =
             let dim, unit = 
                 match this with
                 | Count _    -> new Dimension(Name = "Type", Value = "Count"), StandardUnit.Count
@@ -55,14 +60,31 @@ module Extensions =
                     Sum         = this.Sum,
                     SampleCount = float this.SampleCount
                 ))
-
+               
 [<RequireQualifiedAccess>]
 module Constants =
     // cloud watch limits the MetricDatum list to a size of 20 per request
     let putMetricDataListSize = 20
 
+    // lowest granularity on CloudWatch is 1 minute
+    let interval = TimeSpan.FromMinutes 1.0
+
+type Message =
+    | AddMetricData     of Metricano.Metric[]
+    | Publish
+
 type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
     let onPutMetricError = new Event<Exception>()
+
+    let combine (left : MetricDatum) (right : MetricDatum) =
+        if left.MetricName = right.MetricName &&
+            left.Dimensions = right.Dimensions &&
+            left.Unit       = right.Unit 
+        then left.StatisticValues.SampleCount <- left.StatisticValues.SampleCount + right.StatisticValues.SampleCount
+             left.StatisticValues.Sum         <- left.StatisticValues.Sum + right.StatisticValues.Sum
+             left.StatisticValues.Maximum     <- max left.StatisticValues.Maximum right.StatisticValues.Maximum
+             left.StatisticValues.Minimum     <- min left.StatisticValues.Minimum right.StatisticValues.Minimum
+        else raise <| MetricDatumMismatch(left, right)
 
     let send (datum : MetricDatum[]) = async {
         let req = new PutMetricDataRequest(Namespace  = rootNamespace,
@@ -79,20 +101,53 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
         |> Async.Parallel
         |> Async.Ignore
 
-    let putMetricData (datum : Metricano.Metric seq) =
-        datum 
-        |> Seq.map (fun m -> m.ToMetricData())
-        |> Seq.groupsOfAtMost Constants.putMetricDataListSize
-        |> sendAll
+    let agent = Agent<Message>.StartSupervised(fun inbox ->
+        let metricData = new Dictionary<string * MetricType, MetricDatum>()
+        let add (metric : Metricano.Metric) = 
+            let key, newDatum = (metric.Name, metric.Type), metric.ToMetricDatum()
+            match metricData.TryGetValue key with
+            | true, datum -> combine datum newDatum
+            | _ -> metricData.[key] <- newDatum
+
+        let rec loop () = async {
+            let! msg = inbox.Receive()
+
+            match msg with
+            | AddMetricData metrics -> 
+                metrics |> Array.iter add
+                return! loop()
+            | Publish ->
+                metricData.Values
+                |> Seq.groupsOfAtMost Constants.putMetricDataListSize
+                |> sendAll
+                |> Async.StartAsPlainTask
+                |> (fun task -> task.Wait())
+
+                metricData.Clear()
+                return! loop()
+        }
+        
+        loop())
+
+    let putMetricData (metrics : Metricano.Metric[]) = 
+        async {
+            agent.Post <| AddMetricData metrics
+        } 
         |> Async.StartAsPlainTask
+
+    let upload = fun _ -> agent.Post Publish
+    let timer    = new Timer(upload, null, Constants.interval, Constants.interval)
         
     [<CLIEvent>] member this.OnPutMetricError = onPutMetricError.Publish
     
-    new(rootNamespace) = CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient())
+    new(rootNamespace) = new CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient())
     new(rootNamespace, credentials : Amazon.Runtime.AWSCredentials, region : Amazon.RegionEndpoint) = 
-        CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(credentials, region))
+        new CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(credentials, region))
     new(rootNamespace, awsAccessKeyId, awsSecretAccessKey, region : Amazon.RegionEndpoint) = 
-        CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(awsAccessKeyId, awsSecretAccessKey, region))
+        new CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(awsAccessKeyId, awsSecretAccessKey, region))
 
     interface IMetricsPublisher with
         member this.Publish metrics = putMetricData metrics
+        member this.Dispose ()      = 
+            timer.Dispose()
+            upload()
