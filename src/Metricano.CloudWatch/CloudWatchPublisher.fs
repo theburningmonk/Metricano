@@ -78,7 +78,6 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
 
     let combine (left : MetricDatum) (right : MetricDatum) =
         if left.MetricName = right.MetricName &&
-            left.Dimensions = right.Dimensions &&
             left.Unit       = right.Unit 
         then left.StatisticValues.SampleCount <- left.StatisticValues.SampleCount + right.StatisticValues.SampleCount
              left.StatisticValues.Sum         <- left.StatisticValues.Sum + right.StatisticValues.Sum
