@@ -1,6 +1,7 @@
 ﻿namespace Metricano.Tests
 
 open System
+
 open FsUnit
 open NUnit.Framework
 open Metricano
@@ -19,7 +20,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.TimeSpan
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Milliseconds"
-        metric.Count        |> should equal 2.0
+        metric.SampleCount  |> should equal 2.0
         metric.Sum          |> should equal 4.0
         metric.Max          |> should equal 3.0
         metric.Min          |> should equal 1.0
@@ -37,7 +38,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.Count
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Count"
-        metric.Count        |> should equal 2.0
+        metric.SampleCount  |> should equal 2.0
         metric.Sum          |> should equal 4.0
         metric.Max          |> should equal 3.0
         metric.Min          |> should equal 1.0
@@ -54,7 +55,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.TimeSpan
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Milliseconds"
-        metric.Count        |> should equal 10000.0
+        metric.SampleCount  |> should equal 10000.0
         metric.Sum          |> should equal 10000.0
         metric.Max          |> should equal 1.0
         metric.Min          |> should equal 1.0
@@ -71,7 +72,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.Count
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Count"
-        metric.Count        |> should equal 10000.0
+        metric.SampleCount  |> should equal 10000.0
         metric.Sum          |> should equal 10000.0
         metric.Max          |> should equal 1.0
         metric.Min          |> should equal 1.0
@@ -88,7 +89,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.Count
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Count"
-        metric.Count        |> should equal 1.0
+        metric.SampleCount  |> should equal 1.0
         metric.Sum          |> should equal 10.0
         metric.Max          |> should equal 10.0
         metric.Min          |> should equal 10.0
@@ -103,7 +104,7 @@ type ``MetricsAgent tests`` () =
         metric.Type         |> should equal MetricType.Count
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Count"
-        metric.Count        |> should equal 1.0
+        metric.SampleCount  |> should equal 1.0
         metric.Sum          |> should equal 20.0
         metric.Max          |> should equal 20.0
         metric.Min          |> should equal 20.0

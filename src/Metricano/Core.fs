@@ -28,106 +28,168 @@ type MetricType =
     | TimeSpan = 1uy
     | Count    = 2uy
 
-type Metric = 
+type CountMetric =
     {
-        Type                : MetricType
-        Name                : string
-        TimeStamp           : DateTime
-        Unit                : string
-        mutable Average     : double
-        mutable Sum         : double
-        mutable Max         : double
-        mutable Min         : double
-        mutable Count       : double
+        Name        : string
+        TimeStamp   : DateTime
+        Sum         : double
+        Average     : double
+        Max         : double
+        Min         : double
+        Count       : int64
     }
 
-    static member Create metricType name timestamp unit = 
+type TimeSpanMetric =
+    {
+        Name        : string
+        TimeStamp   : DateTime
+        Sum         : TimeSpan
+        Average     : TimeSpan
+        Max         : TimeSpan
+        Min         : TimeSpan
+        Raw         : TimeSpan[]
+    }
+
+type Metric = 
+    | Count     of CountMetric
+    | TimeSpan  of TimeSpanMetric
+
+    member this.Name        = match this with | Count { Name = name } | TimeSpan { Name = name } -> name    
+    member this.TimeStamp   = match this with | Count { TimeStamp = ts } | TimeSpan { TimeStamp = ts } -> ts
+    member this.Type        = match this with | Count _ -> MetricType.Count | TimeSpan _ -> MetricType.TimeSpan
+    member this.Unit        = match this with | Count _ -> "Count" | TimeSpan _ -> "Milliseconds"
+    member this.Sum         = match this with | Count { Sum = sum } -> sum | TimeSpan { Sum = sum } -> sum.TotalMilliseconds
+    member this.Average     = match this with | Count { Average = avg } -> avg | TimeSpan { Average = avg } -> avg.TotalMilliseconds
+    member this.Max         = match this with | Count { Max = max } -> max | TimeSpan { Max = max } -> max.TotalMilliseconds
+    member this.Min         = match this with | Count { Min = min } -> min | TimeSpan { Min = min } -> min.TotalMilliseconds
+    member this.SampleCount = match this with 
+                              | Count { Count = count } -> count
+                              | TimeSpan { Raw = raw }  -> raw.LongLength
+
+type CountMetricInternal =
+    {
+        Name            : string
+        TimeStamp       : DateTime
+        mutable Sum     : double
+        mutable Average : double
+        mutable Max     : double
+        mutable Min     : double
+        mutable Count   : int64
+    }
+
+    static member Create name timeStamp =
         {
-            Type        = metricType
             Name        = name
-            Unit        = unit
-            TimeStamp   = timestamp
+            TimeStamp   = timeStamp
             Average     = 0.0
             Sum         = 0.0
             Max         = 0.0
             Min         = 0.0
-            Count       = 0.0
+            Count       = 0L
         }
 
-    /// Operator for track a timespan to a TimeSpan metric
-    static member (+=) (metric : Metric, timespan : TimeSpan) =
-        metric.Sum        <- metric.Sum + timespan.TotalMilliseconds
-        metric.Count      <- metric.Count + 1.0
-        metric.Average    <- metric.Sum / metric.Count        
-
-        if metric.Count = 1.0 then 
-            // if this is the first sample, then it defines the min and max
-            metric.Max    <- timespan.TotalMilliseconds
-            metric.Min    <- timespan.TotalMilliseconds
-        else 
-            metric.Max    <- max timespan.TotalMilliseconds metric.Max
-            metric.Min    <- min timespan.TotalMilliseconds metric.Min
-
-    /// Operator for setting the count for a Count metric
-    static member (+=) (metric : Metric, n) =
+    /// Resets the count metric
+    static member (?=) (metric : CountMetricInternal, n) =
         metric.Sum        <- n
-        metric.Count      <- 1.0
+        metric.Count      <- 1L
         metric.Average    <- n
         metric.Min        <- n
         metric.Max        <- n
 
-    /// Operator for incrementing the count for a Count metric
-    static member (++) (metric : Metric, n) = 
-        metric.Sum        <- metric.Sum + n
+    /// Add data point to the count metric
+    static member (++) (metric : CountMetricInternal, n) = 
+        metric.Sum         <- metric.Sum + n
 
         match metric.Count with
-        | 0.0 -> metric.Max <- n
-                 metric.Min <- n
-        | _   -> metric.Max <- max metric.Max n
-                 metric.Min <- min metric.Min n
+        | 0L -> metric.Max <- n
+                metric.Min <- n
+        | _  -> metric.Max <- max metric.Max n
+                metric.Min <- min metric.Min n
 
-        metric.Count      <- metric.Count + 1.0
-        metric.Average    <- metric.Sum / metric.Count
-        
-type Message = | TimeSpan   of DateTime * string * TimeSpan
-               | IncrCount  of DateTime * string * int64
-               | SetCount   of DateTime * string * int64
-               | Flush      of AsyncReplyChannel<Metric[]>
+        metric.Count       <- metric.Count + 1L
+        metric.Average     <- metric.Sum / double metric.Count
+
+type TimeSpanMetricInternal =
+    {
+        Name        : string
+        TimeStamp   : DateTime
+        Raw         : List<TimeSpan>
+    }
+
+    static member Create name timeStamp =
+        {
+            Name        = name
+            TimeStamp   = timeStamp
+            Raw         = new List<TimeSpan>()
+        }
+
+type MetricInternal =
+    | Count     of CountMetricInternal
+    | TimeSpan  of TimeSpanMetricInternal
+            
+type Message = | AddTimeSpan  of DateTime * string * TimeSpan
+               | IncrCount    of DateTime * string * int64
+               | SetCount     of DateTime * string * int64
+               | Flush        of AsyncReplyChannel<Metric[]>
 
 type MetricsAgent private () =
     static let getPeriodId (dt : DateTime) = uint64 <| dt.ToString("yyyyMMddHHmm")
 
+    static let toMetric = function
+        | TimeSpan timeMetric -> 
+            let raw = timeMetric.Raw.ToArray()
+            Metric.TimeSpan {
+                                Name        = timeMetric.Name
+                                TimeStamp   = timeMetric.TimeStamp
+                                Sum         = raw |> Array.sumBy (fun ts -> ts.Ticks) |> TimeSpan.FromTicks
+                                Average     = raw |> Array.averageBy (fun ts -> ts.TotalMilliseconds) |> TimeSpan.FromMilliseconds
+                                Max         = raw |> Array.max
+                                Min         = raw |> Array.min
+                                Raw         = raw
+                            }
+        | Count countMetric ->
+            Metric.Count {
+                                Name        = countMetric.Name
+                                TimeStamp   = countMetric.TimeStamp
+                                Sum         = countMetric.Sum
+                                Average     = countMetric.Average
+                                Max         = countMetric.Max
+                                Min         = countMetric.Min
+                                Count       = countMetric.Count
+                         }
+
     // the main message processing agent
     static let agent = Agent<Message>.StartSupervised(fun inbox ->
-        let metricsData = new Dictionary<uint64 * MetricType * string, Metric>()
+        let metricsData = new Dictionary<uint64 * MetricType * string, MetricInternal>()
         
         // registers a TimeSpan metric
-        let regTimeSpanMetric timestamp metricName timespan =
+        let regTimeSpanMetric timestamp metricName timeSpan =
             let key = getPeriodId timestamp, MetricType.TimeSpan, metricName
             match metricsData.TryGetValue key with
-            | true, metric -> metric += timespan
+            | true, TimeSpan metric -> metric.Raw.Add timeSpan
             | false, _ -> 
-                let metric = Metric.Create MetricType.TimeSpan metricName timestamp "Milliseconds"
-                metric += timespan
-                metricsData.[key] <- metric
+                let metric = TimeSpanMetricInternal.Create metricName timestamp
+                metric.Raw.Add timeSpan
+                metricsData.[key] <- TimeSpan metric
 
         // registers a Count metric
         let regCountMetric timestamp metricName count update = 
             let key = getPeriodId timestamp, MetricType.Count, metricName
             match metricsData.TryGetValue key with
-            | true, metric -> update metric (float count)
+            | true, Count metric -> update metric (float count)
+            | true, _  -> () // ignore this case as it should never happen
             | false, _ -> 
-                let metric = Metric.Create MetricType.Count metricName timestamp "Count"
-                metric ++ float count
-                metricsData.[key] <- metric
+                let metric = CountMetricInternal.Create metricName timestamp
+                metric ++ double count
+                metricsData.[key] <- Count metric
 
         let rec loop () = async {
             let! msg = inbox.Receive()
 
             match msg with
-            | TimeSpan(timestamp, metricName, timespan) ->
+            | AddTimeSpan(timestamp, metricName, timeSpan) ->
                 // register the timespan metric
-                regTimeSpanMetric timestamp metricName timespan
+                regTimeSpanMetric timestamp metricName timeSpan
                 return! loop()
             | IncrCount(timestamp, metricName, count) ->
                 // register and increment the count metric
@@ -135,30 +197,22 @@ type MetricsAgent private () =
                 return! loop()
             | SetCount(timestamp, metricName, count) ->
                 // register and set the count metric
-                regCountMetric timestamp metricName count (+=)
+                regCountMetric timestamp metricName count (?=)
                 return! loop()
             | Flush(reply) ->
                 // replies with all the current metrics, and clear the metrics dictionary
-                reply.Reply(metricsData.Values |> Seq.toArray)
+                reply.Reply(metricsData.Values |> Seq.map toMetric |> Seq.toArray)
                 metricsData.Clear()
                 return! loop()
         }
 
         loop())
 
-    static member RecordTimeSpanMetric (metricName, timespan) = 
-        TimeSpan(DateTime.UtcNow, metricName, timespan) |> agent.Post
-
-    static member IncrementCountMetric (metricName) =
-        IncrCount(DateTime.UtcNow, metricName, 1L) |> agent.Post
-
-    static member IncrementCountMetricBy (metricName, n) =
-        IncrCount(DateTime.UtcNow, metricName, n) |> agent.Post
-
-    static member SetCountMetric (metricName, n) =
-        SetCount(DateTime.UtcNow, metricName, n) |> agent.Post
-
-    static member Flush () = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
+    static member RecordTimeSpanMetric (metricName, timespan) = agent.Post <| AddTimeSpan(DateTime.UtcNow, metricName, timespan)
+    static member IncrementCountMetric (metricName)           = agent.Post <| IncrCount(DateTime.UtcNow, metricName, 1L)
+    static member IncrementCountMetricBy (metricName, n)      = agent.Post <| IncrCount(DateTime.UtcNow, metricName, n)
+    static member SetCountMetric (metricName, n)              = agent.Post <| SetCount(DateTime.UtcNow, metricName, n)
+    static member Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
 type IMetricsPublisher =
     abstract member Publish : Metric[] -> Task

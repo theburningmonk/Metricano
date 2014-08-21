@@ -7,18 +7,41 @@ type MetricType =
     | TimeSpan = 1uy
     | Count    = 2uy
 
-type Metric = 
+type CountMetric =
     {
-        Type                : MetricType
-        Name                : string
-        TimeStamp           : DateTime
-        Unit                : string
-        mutable Average     : double
-        mutable Sum         : double
-        mutable Max         : double
-        mutable Min         : double
-        mutable Count       : double
+        Name        : string
+        TimeStamp   : DateTime
+        Sum         : double
+        Average     : double
+        Max         : double
+        Min         : double
+        Count       : int64
     }
+
+type TimeSpanMetric =
+    {
+        Name        : string
+        TimeStamp   : DateTime
+        Sum         : TimeSpan
+        Average     : TimeSpan
+        Max         : TimeSpan
+        Min         : TimeSpan
+        Raw         : TimeSpan[]
+    }
+
+type Metric = 
+    | Count     of CountMetric
+    | TimeSpan  of TimeSpanMetric
+
+    member Name         : string
+    member TimeStamp    : DateTime
+    member Type         : MetricType
+    member Unit         : string
+    member Sum          : double
+    member Average      : double
+    member Max          : double
+    member Min          : double
+    member SampleCount  : int64
 
 [<Class>]
 type MetricsAgent =

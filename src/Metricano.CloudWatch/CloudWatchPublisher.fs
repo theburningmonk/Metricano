@@ -39,13 +39,10 @@ module Extensions =
 
     type Metricano.Metric with
         member this.ToMetricData () =
-            let dim  = match this.Type with
-                       | MetricType.Count    -> new Dimension(Name = "Type", Value = "Count")
-                       | MetricType.TimeSpan -> new Dimension(Name = "Type", Value = "TimeSpan")
-
-            let unit = match this.Unit with
-                       | "Milliseconds" -> StandardUnit.Milliseconds
-                       | "Count"        -> StandardUnit.Count
+            let dim, unit = 
+                match this with
+                | Count _    -> new Dimension(Name = "Type", Value = "Count"), StandardUnit.Count
+                | TimeSpan _ -> new Dimension(Name = "Type", Value = "TimeSpan"), StandardUnit.Milliseconds
 
             new MetricDatum(
                 MetricName = this.Name,
@@ -56,7 +53,7 @@ module Extensions =
                     Maximum     = this.Max,
                     Minimum     = this.Min,
                     Sum         = this.Sum,
-                    SampleCount = this.Count
+                    SampleCount = float this.SampleCount
                 ))
 
 [<RequireQualifiedAccess>]
@@ -65,8 +62,7 @@ module Constants =
     let putMetricDataListSize = 20
 
 type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
-
-    let onPutMetricError = new Event<Exception>()     
+    let onPutMetricError = new Event<Exception>()
 
     let send (datum : MetricDatum[]) = async {
         let req = new PutMetricDataRequest(Namespace  = rootNamespace,
