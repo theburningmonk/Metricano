@@ -64,7 +64,7 @@ module Constants =
     // cloud watch limits the MetricDatum list to a size of 20 per request
     let putMetricDataListSize = 20
 
-type CloudWatchPublisher (rootNamespace : string, client : AmazonCloudWatchClient) =
+type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
 
     let onPutMetricError = new Event<Exception>()     
 
