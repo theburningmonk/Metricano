@@ -58,8 +58,7 @@ module Constants =
     // cloud watch limits the MetricDatum list to a size of 20 per request
     let putMetricDataListSize = 20
 
-type CloudWatchPublisher (rootNamespace : string) =
-    let client = new AmazonCloudWatchClient()
+type CloudWatchPublisher (rootNamespace : string, client : AmazonCloudWatchClient) =
 
     let onPutMetricError = new Event<Exception>()     
 
@@ -86,6 +85,12 @@ type CloudWatchPublisher (rootNamespace : string) =
         |> Async.StartAsPlainTask
         
     [<CLIEvent>] member this.OnPutMetricError = onPutMetricError.Publish
+    
+    new(rootNamespace) = CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient())
+    new(rootNamespace, credentials : Amazon.Runtime.AWSCredentials, region : Amazon.RegionEndpoint) = 
+        CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(credentials, region))
+    new(rootNamespace, awsAccessKeyId, awsSecretAccessKey, region : Amazon.RegionEndpoint) = 
+        CloudWatchPublisher(rootNamespace, new AmazonCloudWatchClient(awsAccessKeyId, awsSecretAccessKey, region))
 
     interface IMetricsPublisher with
         member this.Publish metrics = putMetricData metrics
