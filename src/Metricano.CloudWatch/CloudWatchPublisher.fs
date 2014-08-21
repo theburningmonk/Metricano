@@ -1,6 +1,7 @@
 ﻿namespace Metricano.Publisher
 
 open System
+open System.Collections.Generic
 open System.Linq
 open System.Threading.Tasks
 
@@ -38,6 +39,10 @@ module Extensions =
 
     type Metricano.Metric with
         member this.ToMetricData () =
+            let dim  = match this.Type with
+                       | MetricType.Count    -> new Dimension(Name = "Type", Value = "Count")
+                       | MetricType.TimeSpan -> new Dimension(Name = "Type", Value = "TimeSpan")
+
             let unit = match this.Unit with
                        | "Milliseconds" -> StandardUnit.Milliseconds
                        | "Count"        -> StandardUnit.Count
@@ -46,6 +51,7 @@ module Extensions =
                 MetricName = this.Name,
                 Unit       = unit,
                 Timestamp  = this.TimeStamp,
+                Dimensions = new List<Dimension>([| dim |]),
                 StatisticValues = new StatisticSet(
                     Maximum     = this.Max,
                     Minimum     = this.Min,
