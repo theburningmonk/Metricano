@@ -10,7 +10,7 @@ module Publish =
     let publishers = new ConcurrentBag<IMetricsPublisher>()
 
     [<Microsoft.FSharp.Core.CompiledNameAttribute("Interval")>]
-    let interval   = TimeSpan.FromSeconds 5.0
+    let interval   = TimeSpan.FromSeconds 1.0
 
     let flush      = fun _ -> 
         let metrics = MetricsAgent.Flush().Result
