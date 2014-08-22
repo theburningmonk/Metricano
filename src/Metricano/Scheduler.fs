@@ -1,6 +1,7 @@
 ﻿namespace Metricano
 
 open System
+open System.Linq
 open System.Collections.Concurrent
 open System.Threading
 
@@ -12,9 +13,15 @@ module Publish =
     [<Microsoft.FSharp.Core.CompiledNameAttribute("Interval")>]
     let interval   = TimeSpan.FromSeconds 1.0
 
+    let publish metrics (publisher : IMetricsPublisher) =
+        try
+            publisher.Publish metrics |> ignore
+        with
+        | :? ObjectDisposedException -> ()
+
     let flush      = fun _ ->
         let metrics = MetricsAgent.Flush().Result
-        publishers.ToArray() |> Array.iter (fun pub -> pub.Publish metrics |> ignore)
+        publishers.ToArray() |> Array.iter (publish metrics)
     let timer      = new Timer(flush, null, interval, interval)
 
     [<Microsoft.FSharp.Core.CompiledNameAttribute("With")>]

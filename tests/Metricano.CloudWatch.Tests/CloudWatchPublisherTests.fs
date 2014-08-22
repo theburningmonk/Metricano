@@ -36,7 +36,7 @@ type ``CloudWatchPublisher tests`` () =
         Thread.Sleep(TimeSpan.FromSeconds 2.0) // give it time to push data to the publishers
 
         // metrics should now be aggregated at publisher, force the publisher to upload it
-        Publish.stop()
+        (cloudWatchPub :> IDisposable).Dispose()
         
         let exn = !exn
         exn         |> should be instanceOfType<AggregateException>
@@ -69,7 +69,7 @@ type ``CloudWatchPublisher tests`` () =
 
         // force the data to be published
         // metrics should now be aggregated at publisher, force the publisher to upload it
-        Publish.stop()
+        (cloudWatchPub :> IDisposable).Dispose()
 
         let req = !req
         req.Namespace   |> should equal ns
