@@ -49,6 +49,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ExtensionsTests.fs" />
     <Compile Include="MetricsAgentTests.fs" />
     <Compile Include="SchedulerTests.fs" />
     <None Include="app.config" />
