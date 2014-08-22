@@ -66,12 +66,10 @@ module Constants =
     // cloud watch limits the MetricDatum list to a size of 20 per request
     let putMetricDataListSize = 20
 
-    // lowest granularity on CloudWatch is 1 minute
-    let interval = TimeSpan.FromMinutes 1.0
-
 type Message =
     | AddMetricData     of Metricano.Metric[]
     | Publish
+    | SyncPublish       of AsyncReplyChannel<unit>
 
 type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
     let onPutMetricError = new Event<Exception>()
@@ -108,6 +106,15 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
             | true, datum -> combine datum newDatum
             | _ -> metricData.[key] <- newDatum
 
+        let pub () =
+            metricData.Values
+            |> Seq.groupsOfAtMost Constants.putMetricDataListSize
+            |> sendAll
+            |> Async.StartAsPlainTask
+            |> (fun task -> task.Wait())
+
+            metricData.Clear()
+
         let rec loop () = async {
             let! msg = inbox.Receive()
 
@@ -116,13 +123,11 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
                 metrics |> Array.iter add
                 return! loop()
             | Publish ->
-                metricData.Values
-                |> Seq.groupsOfAtMost Constants.putMetricDataListSize
-                |> sendAll
-                |> Async.StartAsPlainTask
-                |> (fun task -> task.Wait())
-
-                metricData.Clear()
+                pub()
+                return! loop()
+            | SyncPublish reply ->
+                pub()
+                reply.Reply()
                 return! loop()
         }
         
@@ -134,8 +139,8 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
         } 
         |> Async.StartAsPlainTask
 
-    let upload = fun _ -> agent.Post Publish
-    let timer    = new Timer(upload, null, Constants.interval, Constants.interval)
+    let interval = TimeSpan.FromMinutes 1.0
+    let timer    = new Timer((fun _ -> agent.Post Publish), null, interval, interval)
         
     [<CLIEvent>] member this.OnPutMetricError = onPutMetricError.Publish
     
@@ -149,4 +154,5 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
         member this.Publish metrics = putMetricData metrics
         member this.Dispose ()      = 
             timer.Dispose()
-            upload()
+            agent.PostAndReply((fun reply -> SyncPublish reply), 10000) // give it 10 seconds to finish
+            (agent :> IDisposable).Dispose()

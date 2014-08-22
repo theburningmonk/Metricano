@@ -12,7 +12,7 @@ module Publish =
     [<Microsoft.FSharp.Core.CompiledNameAttribute("Interval")>]
     let interval   = TimeSpan.FromSeconds 1.0
 
-    let flush      = fun _ -> 
+    let flush      = fun _ ->
         let metrics = MetricsAgent.Flush().Result
         publishers.ToArray() |> Array.iter (fun pub -> pub.Publish metrics |> ignore)
     let timer      = new Timer(flush, null, interval, interval)
