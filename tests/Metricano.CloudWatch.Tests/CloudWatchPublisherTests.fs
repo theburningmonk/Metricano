@@ -15,6 +15,34 @@ open Metricano.Publisher
 [<TestFixture>]
 type ``CloudWatchPublisher tests`` () = 
     [<Test>]
+    member test.``publish should handle failures`` () =
+        let res = async { failwith "boom"; return PutMetricDataResponse() } |> Async.StartAsTask
+        let exn : Exception ref = ref null
+        let ns  = "test"
+
+        let cloudWatch =
+            Mock<Amazon.CloudWatch.IAmazonCloudWatch>()
+                .Setup(fun x -> <@ x.PutMetricDataAsync(any(), any()) @>)
+                .Returns(res)
+                .Create()
+
+        let cloudWatchPub = new CloudWatchPublisher(ns, cloudWatch)
+        cloudWatchPub.OnPutMetricError.Add(fun exn' -> exn := exn')
+        Publish.pubWith(cloudWatchPub)
+        
+        MetricsAgent.IncrementCountMetricBy("CountMetric", 1500L)
+        MetricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 1.5)
+        
+        Thread.Sleep(TimeSpan.FromSeconds 2.0) // give it time to push data to the publishers
+
+        // metrics should now be aggregated at publisher, force the publisher to upload it
+        Publish.stop()
+        
+        let exn = !exn
+        exn         |> should be instanceOfType<AggregateException>
+        (exn :?> AggregateException).InnerException.Message |> should equal "boom"
+
+    [<Test>]
     member test.``metrics published across multiple publish intervals are aggregated into per minute metrics`` () =
         let req : PutMetricDataRequest ref = ref null
         let res = Task.FromResult <| PutMetricDataResponse()

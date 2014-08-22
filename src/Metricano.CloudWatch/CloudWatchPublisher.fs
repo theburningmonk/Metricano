@@ -37,10 +37,40 @@ module Seq =
 
 [<AutoOpen>]
 module Extensions =
+    /// Default function for calcuating delay (in milliseconds) between retries, based on (http://en.wikipedia.org/wiki/Exponential_backoff)
+    /// After 8 retries the delay starts to become unreasonable for most scenarios, so cap the delay at that
+    let private exponentialDelay =
+        let calcDelay retries = 
+            let rec sum acc = function | 0 -> acc | n -> sum (acc + n) (n - 1)
+
+            let n = pown 2 retries - 1
+            let slots = float (sum 0 n) / float (n + 1)
+            int (100.0 * slots)
+
+        let delays = [| 0..8 |] |> Array.map calcDelay
+
+        (fun retries -> delays.[min retries 8])
+
     type Async with
         /// Starts a computation as a plain task.
         static member StartAsPlainTask (work : Async<unit>) = 
             Task.Factory.StartNew(fun () -> work |> Async.RunSynchronously)
+
+        /// Retries the async computation up to specified number of times. Optionally accepts a function to calculate
+        /// the delay in milliseconds between retries, default is exponential delay with a backoff slot of 500ms.
+        static member WithRetry (computation : Async<'a>, maxRetries, ?calcDelay) =
+            let calcDelay = defaultArg calcDelay exponentialDelay
+
+            let rec loop retryCount =
+                async {
+                    let! res = computation |> Async.Catch
+                    match res with
+                    | Choice2Of2 _ when retryCount < maxRetries -> 
+                        do! calcDelay retryCount |> Async.Sleep
+                        return! loop (retryCount + 1)
+                    | _ -> return res
+                }
+            loop 0
 
     type Metricano.Metric with
         member this.ToMetricDatum () =
@@ -86,7 +116,8 @@ type CloudWatchPublisher (rootNamespace : string, client : IAmazonCloudWatch) =
     let send (datum : MetricDatum[]) = async {
         let req = new PutMetricDataRequest(Namespace  = rootNamespace,
                                            MetricData = datum.ToList())
-        let! res = client.PutMetricDataAsync(req) |> Async.AwaitTask |> Async.Catch
+        let sendAsync = client.PutMetricDataAsync(req) |> Async.AwaitTask
+        let! res = Async.WithRetry(sendAsync, 3)
         match res with
         | Choice1Of2 _   -> ()
         | Choice2Of2 exn -> onPutMetricError.Trigger exn
