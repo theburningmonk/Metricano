@@ -10,7 +10,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{82413C46-9585-4680-A3E6-41D380117347}"
 	ProjectSection(SolutionItems) = preProject
 		build.fsx = build.fsx
+		nuget\Metricano.CloudWatch.nuspec = nuget\Metricano.CloudWatch.nuspec
 		nuget\Metricano.nuspec = nuget\Metricano.nuspec
+		nuget\Metricano.PostSharpAspects.nuspec = nuget\Metricano.PostSharpAspects.nuspec
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
 	EndProjectSection

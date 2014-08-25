@@ -25,15 +25,22 @@ let tempDir  = "temp/"
 
 // The name of the project 
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
-let project    = "Metricano"
+let project             = "Metricano"
+let cloudWatchProject   = "Metricano.CloudWatch"
+let postSharpProject    = "Metricano.PostSharpAspects"
 
 // Short summary of the project
 // (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary    = "Agent-based F# library for collecting, aggregating and publishing metrics"
+let summary           = "Agent-based F# library for collecting, aggregating and publishing metrics"
+let cloudWatchSummary = "Publisher for Metricano that publishes metrics to Amazon CloudWatch"
+let postSharpSummary  = "PostSharp aspects for recording method execution count and time with Metricano"
 
 // Longer description of the project
 // (used as a description for NuGet package; line breaks are automatically cleaned up)
-let description = "Agent-based F# library for collecting, aggregating and publishing metrics"
+let description           = "Agent-based F# library for collecting, aggregating and publishing metrics"
+let cloudWatchDescription = "Publisher for Metricano that publishes metrics to Amazon CloudWatch"
+let postSharpDescription  = "PostSharp aspects for recording method execution count and time with Metricano"
+
 // List of author names (for NuGet package)
 let authors = [ "Yan Cui" ]
 // Tags for your project (for NuGet package)
@@ -58,14 +65,27 @@ let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let fileName = "src/Metricano/AssemblyInfo.fs"
-  CreateFSharpAssemblyInfo fileName
+  CreateFSharpAssemblyInfo "src/Metricano/AssemblyInfo.fs"
       [ Attribute.Title         project
         Attribute.Product       project
         Attribute.Description   summary
         Attribute.Version       release.AssemblyVersion
         Attribute.FileVersion   release.AssemblyVersion
         Attribute.InternalsVisibleTo "Metricano.Tests" ]
+
+  CreateFSharpAssemblyInfo "src/Metricano.CloudWatch/AssemblyInfo.fs"
+      [ Attribute.Title         cloudWatchProject
+        Attribute.Product       cloudWatchProject
+        Attribute.Description   cloudWatchSummary
+        Attribute.Version       release.AssemblyVersion
+        Attribute.FileVersion   release.AssemblyVersion ]
+
+  CreateCSharpAssemblyInfo "src/Metricano.PostSharpAspects/Properties/AssemblyInfo.cs"
+      [ Attribute.Title         postSharpProject
+        Attribute.Product       postSharpProject
+        Attribute.Description   postSharpSummary
+        Attribute.Version       release.AssemblyVersion
+        Attribute.FileVersion   release.AssemblyVersion ]
 )
 
 // --------------------------------------------------------------------------------------
@@ -91,7 +111,10 @@ let files includes =
 
 Target "Build" (fun _ ->
     files [ "src/Metricano/Metricano.fsproj"
-            "tests/Metricano.Tests/Metricano.Tests.fsproj" ]
+            "src/Metricano.CloudWatch/Metricano.CloudWatch.fsproj"
+            "src/Metricano.PostSharpAspects/Metricano.PostSharpAspects.csproj"
+            "tests/Metricano.Tests/Metricano.Tests.fsproj"
+            "tests/Metricano.CloudWatch.Tests/Metricano.CloudWatch.Tests.fsproj" ]
     |> MSBuildRelease buildDir "Rebuild"
     |> ignore
 )
@@ -139,6 +162,38 @@ Target "NuGet" (fun _ ->
             Publish = hasBuildParam "nugetkey"
             Dependencies = [ ] })
         ("nuget/" + project + ".nuspec")
+
+    NuGet (fun p -> 
+        { p with   
+            Authors = authors
+            Project = cloudWatchProject
+            Summary = cloudWatchSummary
+            Description = cloudWatchDescription
+            Version = release.NugetVersion
+            ReleaseNotes = String.Join(Environment.NewLine, release.Notes)
+            Tags = tags
+            OutputPath = "nuget"
+            AccessKey = getBuildParamOrDefault "nugetkey" ""
+            Publish = hasBuildParam "nugetkey"
+            Dependencies = 
+                [ "AWSSDK",  GetPackageVersion "packages" "AWSSDK" ] })
+        ("nuget/" + cloudWatchProject + ".nuspec")
+
+    NuGet (fun p -> 
+        { p with   
+            Authors = authors
+            Project = postSharpProject
+            Summary = postSharpSummary
+            Description = postSharpDescription
+            Version = release.NugetVersion
+            ReleaseNotes = String.Join(Environment.NewLine, release.Notes)
+            Tags = tags
+            OutputPath = "nuget"
+            AccessKey = getBuildParamOrDefault "nugetkey" ""
+            Publish = hasBuildParam "nugetkey"
+            Dependencies = 
+                [ "PostSharp",  GetPackageVersion "packages" "PostSharp" ] })
+        ("nuget/" + postSharpProject + ".nuspec")
 )
 
 // --------------------------------------------------------------------------------------
