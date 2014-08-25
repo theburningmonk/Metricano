@@ -176,7 +176,8 @@ Target "NuGet" (fun _ ->
             AccessKey = getBuildParamOrDefault "nugetkey" ""
             Publish = hasBuildParam "nugetkey"
             Dependencies = 
-                [ "AWSSDK",  GetPackageVersion "packages" "AWSSDK" ] })
+                [ "Metricano", release.NugetVersion
+                  "AWSSDK",    GetPackageVersion "packages" "AWSSDK" ] })
         ("nuget/" + cloudWatchProject + ".nuspec")
 
     NuGet (fun p -> 
@@ -192,7 +193,8 @@ Target "NuGet" (fun _ ->
             AccessKey = getBuildParamOrDefault "nugetkey" ""
             Publish = hasBuildParam "nugetkey"
             Dependencies = 
-                [ "PostSharp",  GetPackageVersion "packages" "PostSharp" ] })
+                [ "Metricano", release.NugetVersion
+                  "PostSharp", GetPackageVersion "packages" "PostSharp" ] })
         ("nuget/" + postSharpProject + ".nuspec")
 )
 
