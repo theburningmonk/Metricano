@@ -5,9 +5,9 @@
     <version>@build.number@</version>
     <authors>@authors@</authors>
     <owners>@authors@</owners>
-    <licenseUrl>https://github.com/theburningmonk/Metricano/blob/develop/LICENSE.txt</licenseUrl>
+    <licenseUrl>https://github.com/theburningmonk/Metricano/blob/master/LICENSE.txt</licenseUrl>
     <projectUrl>https://github.com/theburningmonk/Metricano</projectUrl>
-    <iconUrl>https://raw.github.com/theburningmonk/Metricano/develop/nuget/logo.png</iconUrl>
+    <iconUrl>https://raw.github.com/theburningmonk/Metricano/master/nuget/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <summary>@summary@</summary>
     <description>@description@</description>
