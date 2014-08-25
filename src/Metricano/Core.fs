@@ -122,11 +122,11 @@ type Message = | AddTimeSpan  of DateTime * string * TimeSpan
                | Flush        of AsyncReplyChannel<Metric[]>
 
 [<Sealed>]
-type MetricsAgent private () =
+type MetricsAgent private (?maxRawTimespans : int) =    
     static let defaultAgent = MetricsAgent() :> IMetricsAgent
 
-    static let getPeriodId (dt : DateTime) = uint64 <| dt.ToString("yyyyMMddHHmmss")
-    static let maxBacklog = 600 // keep a maximum of 10 mins worth of data in the backlog
+    // cap the number of raw time spans to track for each metric
+    let maxRawTimespans = defaultArg maxRawTimespans 500
 
     static let toMetric = function
         | TimeSpan timeMetric -> 
@@ -153,34 +153,32 @@ type MetricsAgent private () =
 
     // the main message processing agent
     let agent = Agent<Message>.StartSupervised(fun inbox ->
-        let metricsData = new Dictionary<uint64 * MetricType * string, MetricInternal>()
+        let metricsData = new Dictionary<MetricType * string, MetricInternal>()
         
         // registers a TimeSpan metric
         let regTimeSpanMetric timestamp metricName timeSpan =
-            let key = getPeriodId timestamp, MetricType.TimeSpan, metricName
+            let key = MetricType.TimeSpan, metricName
             match metricsData.TryGetValue key with
-            | true, TimeSpan metric -> metric.Raw.Add timeSpan
+            | true, TimeSpan metric when metric.Raw.Count < maxRawTimespans -> 
+                metric.Raw.Add timeSpan
             | false, _ -> 
                 let metric = TimeSpanMetricInternal.Create metricName timestamp
                 metric.Raw.Add timeSpan
                 metricsData.[key] <- TimeSpan metric
+            | _ -> ()
 
         // registers a Count metric
         let regCountMetric timestamp metricName count update = 
-            let key = getPeriodId timestamp, MetricType.Count, metricName
+            let key = MetricType.Count, metricName
             match metricsData.TryGetValue key with
             | true, Count metric -> update metric (float count)
-            | true, _  -> () // ignore this case as it should never happen
             | false, _ -> 
                 let metric = CountMetricInternal.Create metricName timestamp
                 metric ++ double count
                 metricsData.[key] <- Count metric
+            | _ -> ()
 
         let rec loop () = async {
-            if metricsData.Count > maxBacklog then
-                let toDelete = metricsData.Keys |> Seq.sort |> Seq.skip maxBacklog |> Seq.toArray
-                toDelete |> Array.iter (metricsData.Remove >> ignore)
-
             let! msg = inbox.Receive()
 
             match msg with
@@ -212,8 +210,9 @@ type MetricsAgent private () =
         member this.SetCountMetric (metricName, n)              = agent.Post <| SetCount(DateTime.UtcNow, metricName, n)
         member this.Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
-    static member Default   = defaultAgent
-    static member Create () = MetricsAgent() :> IMetricsAgent
+    static member Default = defaultAgent
+    static member Create (?maxRawTimespans : int) = 
+        MetricsAgent(?maxRawTimespans = maxRawTimespans) :> IMetricsAgent
 
 type IMetricsPublisher =
     inherit IDisposable

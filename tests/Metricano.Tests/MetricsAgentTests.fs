@@ -45,10 +45,28 @@ type ``MetricsAgent tests`` () =
         metric.Average      |> should equal 2.0
 
     [<Test>]
-    member test.``when 10000 TimeSpan metrics are recorded, they should all be tracked correctly`` () =
+    member test.``when 10000 TimeSpan metrics are recorded, they should be capped by maxRawTimespan (default is 500)`` () =
         { 1..10000 } |> Seq.iter (fun _ -> MetricsAgent.Default.RecordTimeSpanMetric("TestA", TimeSpan.FromMilliseconds 1.0))
 
         let metrics = MetricsAgent.Default.Flush().Result
+        metrics.Length      |> should equal 1
+
+        let metric = metrics.[0]
+        metric.Type         |> should equal MetricType.TimeSpan
+        metric.Name         |> should equal "TestA"
+        metric.Unit         |> should equal "Milliseconds"
+        metric.SampleCount  |> should equal 500.0
+        metric.Sum          |> should equal 500.0
+        metric.Max          |> should equal 1.0
+        metric.Min          |> should equal 1.0
+        metric.Average      |> should equal 1.0
+
+    [<Test>]
+    member test.``when 10000 TimeSpan metrics are recorded with a custom metrics agent with maxRawTimespan at 10000 then they should all be tracked`` () =
+        let metricsAgent = MetricsAgent.Create(10000)
+        { 1..10000 } |> Seq.iter (fun _ -> metricsAgent.RecordTimeSpanMetric("TestA", TimeSpan.FromMilliseconds 1.0))
+
+        let metrics = metricsAgent.Flush().Result
         metrics.Length      |> should equal 1
 
         let metric = metrics.[0]
