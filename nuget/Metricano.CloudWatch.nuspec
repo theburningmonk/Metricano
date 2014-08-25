@@ -17,8 +17,8 @@
     @dependencies@
   </metadata>
   <files>
-    <file src="..\build\Metricano.dll" target="lib/net40" />
-    <file src="..\build\Metricano.pdb" target="lib/net40" />
-    <file src="..\build\Metricano.xml" target="lib/net40" />
+    <file src="..\build\Metricano.CloudWatch.dll" target="lib/net45" />
+    <file src="..\build\Metricano.CloudWatch.pdb" target="lib/net45" />
+    <file src="..\build\Metricano.CloudWatch.xml" target="lib/net45" />
   </files>
 </package>

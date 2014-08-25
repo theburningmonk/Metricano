@@ -17,8 +17,9 @@
     @dependencies@
   </metadata>
   <files>
-    <file src="..\build\Metricano.dll" target="lib/net40" />
-    <file src="..\build\Metricano.pdb" target="lib/net40" />
-    <file src="..\build\Metricano.xml" target="lib/net40" />
+    <file src="..\build\Metricano.PostSharpAspects.dll"   target="lib/net45" />
+    <file src="..\build\Metricano.PostSharpAspects.pdb"   target="lib/net45" />
+    <file src="..\build\Metricano.PostSharpAspects.pssym" target="lib/net45" />
+    <file src="..\build\Metricano.PostSharpAspects.xml"   target="lib/net45" />
   </files>
 </package>
