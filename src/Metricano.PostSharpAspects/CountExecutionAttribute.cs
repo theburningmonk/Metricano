@@ -36,7 +36,7 @@ namespace Metricano.PostSharpAspects
         private void IncrementCountMetric(MethodBase method)
         {
             var metricName = GetMetricName(method.DeclaringType, method.Name, method.IsGenericMethod, method.GetGenericArguments());
-            MetricsAgent.IncrementCountMetric(metricName);
+            MetricsAgent.Default.IncrementCountMetric(metricName);
         }
     }
 }

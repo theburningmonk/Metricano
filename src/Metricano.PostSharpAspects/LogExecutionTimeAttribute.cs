@@ -45,7 +45,7 @@ namespace Metricano.PostSharpAspects
         private void PublishMetric(MethodBase method, TimeSpan executionTime)
         {
             var metricName = GetMetricName(method.DeclaringType, method.Name, method.IsGenericMethod, method.GetGenericArguments());
-            MetricsAgent.RecordTimeSpanMetric(metricName, executionTime);
+            MetricsAgent.Default.RecordTimeSpanMetric(metricName, executionTime);
         }
     }
 }

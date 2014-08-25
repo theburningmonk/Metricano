@@ -25,15 +25,16 @@ type ``CloudWatchPublisher tests`` () =
                 .Setup(fun x -> <@ x.PutMetricDataAsync(any(), any()) @>)
                 .Returns(res)
                 .Create()
+        let metricsAgent = MetricsAgent.Create()
 
         let cloudWatchPub = new CloudWatchPublisher(ns, cloudWatch)
         cloudWatchPub.OnPutMetricError.Add(fun exn' -> exn := exn')
-        Publish.pubWith(cloudWatchPub)
+        Publish.With(metricsAgent, cloudWatchPub)
         
-        MetricsAgent.IncrementCountMetricBy("CountMetric", 1500L)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 1.5)
+        metricsAgent.IncrementCountMetricBy("CountMetric", 1500L)
+        metricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 1.5)
         
-        Thread.Sleep(TimeSpan.FromSeconds 2.0) // give it time to push data to the publishers
+        Thread.Sleep(TimeSpan.FromMilliseconds 1.0 + Publish.Interval) // give it time to push data to the publishers
 
         // metrics should now be aggregated at publisher, force the publisher to upload it
         (cloudWatchPub :> IDisposable).Dispose()
@@ -53,19 +54,20 @@ type ``CloudWatchPublisher tests`` () =
                 .Setup(fun x -> <@ x.PutMetricDataAsync(any(), any()) @>)
                 .Calls<PutMetricDataRequest * CancellationToken option>(fun (req', _) -> req := req'; res)
                 .Create()
+        let metricsAgent = MetricsAgent.Create()
 
         let cloudWatchPub = new CloudWatchPublisher(ns, cloudWatch)
-        Publish.pubWith(cloudWatchPub)
+        Publish.With(metricsAgent, cloudWatchPub)
 
-        MetricsAgent.IncrementCountMetricBy("CountMetric", 1500L)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 1.5)
+        metricsAgent.IncrementCountMetricBy("CountMetric", 1500L)
+        metricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 1.5)
         
-        Thread.Sleep(TimeSpan.FromMilliseconds 1.0 + Publish.interval) // give it time to push data to the publishers
+        Thread.Sleep(TimeSpan.FromMilliseconds 1.0 + Publish.Interval) // give it time to push data to the publishers
 
-        MetricsAgent.IncrementCountMetricBy("CountMetric", 500L)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 0.5)
+        metricsAgent.IncrementCountMetricBy("CountMetric", 500L)
+        metricsAgent.RecordTimeSpanMetric("TimeMetric", TimeSpan.FromSeconds 0.5)
         
-        Thread.Sleep(TimeSpan.FromMilliseconds 1.0 + Publish.interval) // give it time to push data to the publishers
+        Thread.Sleep(TimeSpan.FromMilliseconds 1.0 + Publish.Interval) // give it time to push data to the publishers
 
         // force the data to be published
         // metrics should now be aggregated at publisher, force the publisher to upload it

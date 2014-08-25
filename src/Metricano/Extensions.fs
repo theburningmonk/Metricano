@@ -2,11 +2,12 @@
 
 open System
 open System.Threading
+open System.Threading.Tasks
 
 type Agent<'T> = MailboxProcessor<'T>
 
 [<AutoOpen>]
-module AgentExt =
+module Extensions =
     type MailboxProcessor<'T> with
         static member StartSupervised (body               : MailboxProcessor<'T> -> Async<unit>, 
                                        ?cancellationToken : CancellationToken,
@@ -20,3 +21,14 @@ module AgentExt =
             }
 
             Agent.Start((fun inbox -> watchdog body inbox), ?cancellationToken = cancellationToken)
+
+    type Async with
+        static member AwaitPlainTask (task: Task) = 
+            let continuation (t : Task) : unit =
+                match t.IsFaulted with
+                | true -> raise t.Exception
+                | _    -> ()
+            task.ContinueWith continuation |> Async.AwaitTask
+
+        static member StartAsPlainTask (work : Async<unit>) = 
+            Task.Factory.StartNew(fun () -> work |> Async.RunSynchronously)

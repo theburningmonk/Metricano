@@ -2,7 +2,6 @@
 
 open System
 open System.Collections.Generic
-open System.Threading
 open System.Threading.Tasks
 
 open Metricano.Extensions
@@ -109,14 +108,25 @@ type TimeSpanMetricInternal =
 type MetricInternal =
     | Count     of CountMetricInternal
     | TimeSpan  of TimeSpanMetricInternal
+
+type IMetricsAgent =
+    abstract member RecordTimeSpanMetric   : string * TimeSpan -> unit
+    abstract member IncrementCountMetric   : string -> unit
+    abstract member IncrementCountMetricBy : string * int64 -> unit
+    abstract member SetCountMetric         : string * int64 -> unit
+    abstract member Flush                  : unit -> Task<Metric[]>
             
 type Message = | AddTimeSpan  of DateTime * string * TimeSpan
                | IncrCount    of DateTime * string * int64
                | SetCount     of DateTime * string * int64
                | Flush        of AsyncReplyChannel<Metric[]>
 
+[<Sealed>]
 type MetricsAgent private () =
-    static let getPeriodId (dt : DateTime) = uint64 <| dt.ToString("yyyyMMddHHmm")
+    static let defaultAgent = MetricsAgent() :> IMetricsAgent
+
+    static let getPeriodId (dt : DateTime) = uint64 <| dt.ToString("yyyyMMddHHmmss")
+    static let maxBacklog = 600 // keep a maximum of 10 mins worth of data in the backlog
 
     static let toMetric = function
         | TimeSpan timeMetric -> 
@@ -142,7 +152,7 @@ type MetricsAgent private () =
                          }
 
     // the main message processing agent
-    static let agent = Agent<Message>.StartSupervised(fun inbox ->
+    let agent = Agent<Message>.StartSupervised(fun inbox ->
         let metricsData = new Dictionary<uint64 * MetricType * string, MetricInternal>()
         
         // registers a TimeSpan metric
@@ -167,6 +177,10 @@ type MetricsAgent private () =
                 metricsData.[key] <- Count metric
 
         let rec loop () = async {
+            if metricsData.Count > maxBacklog then
+                let toDelete = metricsData.Keys |> Seq.sort |> Seq.skip maxBacklog |> Seq.toArray
+                toDelete |> Array.iter (metricsData.Remove >> ignore)
+
             let! msg = inbox.Receive()
 
             match msg with
@@ -191,11 +205,15 @@ type MetricsAgent private () =
 
         loop())
 
-    static member RecordTimeSpanMetric (metricName, timespan) = agent.Post <| AddTimeSpan(DateTime.UtcNow, metricName, timespan)
-    static member IncrementCountMetric (metricName)           = agent.Post <| IncrCount(DateTime.UtcNow, metricName, 1L)
-    static member IncrementCountMetricBy (metricName, n)      = agent.Post <| IncrCount(DateTime.UtcNow, metricName, n)
-    static member SetCountMetric (metricName, n)              = agent.Post <| SetCount(DateTime.UtcNow, metricName, n)
-    static member Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
+    interface IMetricsAgent with
+        member this.RecordTimeSpanMetric (metricName, timespan) = agent.Post <| AddTimeSpan(DateTime.UtcNow, metricName, timespan)
+        member this.IncrementCountMetric (metricName)           = agent.Post <| IncrCount(DateTime.UtcNow, metricName, 1L)
+        member this.IncrementCountMetricBy (metricName, n)      = agent.Post <| IncrCount(DateTime.UtcNow, metricName, n)
+        member this.SetCountMetric (metricName, n)              = agent.Post <| SetCount(DateTime.UtcNow, metricName, n)
+        member this.Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
+
+    static member Default   = defaultAgent
+    static member Create () = MetricsAgent() :> IMetricsAgent
 
 type IMetricsPublisher =
     inherit IDisposable

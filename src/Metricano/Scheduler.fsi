@@ -2,13 +2,17 @@
 
 open System
 
-[<RequireQualifiedAccess>]
-module Publish =
-    [<Microsoft.FSharp.Core.CompiledNameAttribute("Interval")>]
-    val interval : TimeSpan
+[<Class>]
+[<Sealed>]
+type Publish =
+    /// How frequently are collected metrics published to the configured publishers
+    static member Interval     : TimeSpan
 
-    [<Microsoft.FSharp.Core.CompiledNameAttribute("With")>]
-    val pubWith  : IMetricsPublisher -> unit
+    /// Publish metrics from the Default IMetricsAgent with the specified publisher
+    static member With         : IMetricsPublisher -> unit
 
-    [<Microsoft.FSharp.Core.CompiledNameAttribute("Stop")>]
-    val stop     : unit -> unit
+    /// Publish metrics from the specified IMetricsAgent with the specified publisher
+    static member With         : IMetricsAgent * IMetricsPublisher -> unit
+
+    /// Flush any collected metrics and stop doing any more publishing
+    static member Stop         : unit -> unit

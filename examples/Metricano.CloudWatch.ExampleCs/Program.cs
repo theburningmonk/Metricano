@@ -27,8 +27,8 @@ namespace Metricano.CloudWatch.ExampleCs
 
             while (true)
             {
-                MetricsAgent.IncrementCountMetric(CountMetric);
-                MetricsAgent.RecordTimeSpanMetric(TimeMetric, TimeSpan.FromSeconds(rand.Next(60)));
+                MetricsAgent.Default.IncrementCountMetric(CountMetric);
+                MetricsAgent.Default.RecordTimeSpanMetric(TimeMetric, TimeSpan.FromSeconds(rand.Next(60)));
                 Thread.Sleep(10);
             }
         }

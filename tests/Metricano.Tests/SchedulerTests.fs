@@ -15,19 +15,23 @@ type ``Publish tests`` () =
         let metrics : Metric[] ref = ref [||]
         let publisher = { new IMetricsPublisher with
                             member this.Publish metrics' = 
-                                metrics := metrics'
-                                Task.Delay(1)
+                                match !metrics with
+                                | null | [||] 
+                                    -> metrics := metrics'
+                                       Task.Delay(1)
+                                | _ -> Task.Delay(1)
                             member this.Dispose() = () }
-        Publish.pubWith(publisher)
+        let metricsAgent = MetricsAgent.Create()
+        Publish.With(metricsAgent, publisher)
 
-        MetricsAgent.SetCountMetric("CountMetricA", 1500L)
-        MetricsAgent.IncrementCountMetricBy("CountMetricA", 500L)
-        MetricsAgent.SetCountMetric("CountMetricB", 2000L)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetricA", TimeSpan.FromMinutes 1.5)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetricA", TimeSpan.FromMinutes 0.5)
-        MetricsAgent.RecordTimeSpanMetric("TimeMetricB", TimeSpan.FromMinutes 2.0)
+        metricsAgent.SetCountMetric("CountMetricA", 1500L)
+        metricsAgent.IncrementCountMetricBy("CountMetricA", 500L)
+        metricsAgent.SetCountMetric("CountMetricB", 2000L)
+        metricsAgent.RecordTimeSpanMetric("TimeMetricA", TimeSpan.FromMinutes 1.5)
+        metricsAgent.RecordTimeSpanMetric("TimeMetricA", TimeSpan.FromMinutes 0.5)
+        metricsAgent.RecordTimeSpanMetric("TimeMetricB", TimeSpan.FromMinutes 2.0)
 
-        Publish.stop()
+        Publish.Stop()
 
         !metrics    |> should haveLength 4
         !metrics 

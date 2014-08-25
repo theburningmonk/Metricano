@@ -43,13 +43,20 @@ type Metric =
     member Min          : double
     member SampleCount  : int64
 
+type IMetricsAgent =
+    abstract member RecordTimeSpanMetric   : string * TimeSpan -> unit
+    abstract member IncrementCountMetric   : string -> unit
+    abstract member IncrementCountMetricBy : string * int64 -> unit
+    abstract member SetCountMetric         : string * int64 -> unit
+    abstract member internal Flush         : unit -> Task<Metric[]>
+
 [<Class>]
+[<Sealed>]
 type MetricsAgent =
-    static member RecordTimeSpanMetric   : string * TimeSpan -> unit
-    static member IncrementCountMetric   : string -> unit
-    static member IncrementCountMetricBy : string * int64 -> unit
-    static member SetCountMetric         : string * int64 -> unit
-    static member internal Flush         : unit -> Task<Metric[]>
+    interface IMetricsAgent
+
+    static member Default   : IMetricsAgent
+    static member Create    : unit -> IMetricsAgent
 
 type IMetricsPublisher =
     inherit IDisposable
