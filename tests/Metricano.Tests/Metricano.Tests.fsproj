@@ -52,6 +52,7 @@
     <Compile Include="ExtensionsTests.fs" />
     <Compile Include="MetricsAgentTests.fs" />
     <Compile Include="SchedulerTests.fs" />
+    <Compile Include="WorkflowsTests.fs" />
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>

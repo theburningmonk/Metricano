@@ -49,6 +49,8 @@
     <Compile Include="Core.fs" />
     <Compile Include="Scheduler.fsi" />
     <Compile Include="Scheduler.fs" />
+    <Compile Include="Workflows.fs" />
+    <Compile Include="Workflows.fsi" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
