@@ -4,10 +4,10 @@ using System.Reflection;
 [assembly: AssemblyTitleAttribute("Metricano.PostSharpAspects")]
 [assembly: AssemblyProductAttribute("Metricano.PostSharpAspects")]
 [assembly: AssemblyDescriptionAttribute("PostSharp aspects for recording method execution count and time with Metricano")]
-[assembly: AssemblyVersionAttribute("0.1.0")]
-[assembly: AssemblyFileVersionAttribute("0.1.0")]
+[assembly: AssemblyVersionAttribute("0.2.0")]
+[assembly: AssemblyFileVersionAttribute("0.2.0")]
 namespace System {
     internal static class AssemblyVersionInformation {
-        internal const string Version = "0.1.0";
+        internal const string Version = "0.2.0";
     }
 }
