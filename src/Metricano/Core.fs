@@ -210,9 +210,9 @@ type MetricsAgent private (?maxRawTimespans : int) =
         member this.SetCountMetric (metricName, n)              = agent.Post <| SetCount(DateTime.UtcNow, metricName, n)
         member this.Flush ()                                    = agent.PostAndAsyncReply(fun reply -> Flush(reply)) |> Async.StartAsTask
 
-    static member Default = defaultAgent
-    static member Create (?maxRawTimespans : int) = 
-        MetricsAgent(?maxRawTimespans = maxRawTimespans) :> IMetricsAgent
+    static member Default   = defaultAgent
+    static member Create () = MetricsAgent() :> IMetricsAgent
+    static member Create (maxRawTimespans) = MetricsAgent(maxRawTimespans) :> IMetricsAgent
 
 type IMetricsPublisher =
     inherit IDisposable

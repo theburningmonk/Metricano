@@ -56,7 +56,8 @@ type MetricsAgent =
     interface IMetricsAgent
 
     static member Default   : IMetricsAgent
-    static member Create    : ?maxRawTimespans : int -> IMetricsAgent
+    static member Create    : unit -> IMetricsAgent
+    static member Create    : maxRawTimespans : int -> IMetricsAgent
 
 type IMetricsPublisher =
     inherit IDisposable
