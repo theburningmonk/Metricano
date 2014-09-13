@@ -8,6 +8,12 @@ Agent-based F# library for collecting, aggregating and publishing metrics (e.g. 
 > To provide an easy and efficient way for you to collect and publish method/function level metrics, be it to Amazon CloudWatch, StackDriver or your custom dashboard.
 
 
+### TL;DR ###
+
+<a href="#"><img src="http://i.imgur.com/HcPeU9o.gif" align="middle" height="300" width="350" ></a>
+
+Record metrics with the `MetricsAgent` manually or using the AOP aspects from `Metricano.PostSharpAspects`. `MetricsAgent` will aggregate them into second-by-second summaries, and push these summaries to all publishers you have specified - `Metricano.CloudWatch` provides a publisher for publishing to `Amazon CloudWatch` service.
+
 ### Getting Started ###
 
 There are three concepts you need to remember with working with `Metricano`:
@@ -16,7 +22,7 @@ There are three concepts you need to remember with working with `Metricano`:
 - a **MetricsAgent** (represented by the [IMetricsAgent](https://github.com/theburningmonk/Metricano/blob/master/src/Metricano/Core.fsi#L46-L51) interface) is responsible for tracking your metrics
 - a **Publisher** (represented by the [IMetricsPublisher](https://github.com/theburningmonk/Metricano/blob/master/src/Metricano/Core.fsi#L61-L64) interface) is responsible for publishing your metrics, this is *what you have to implement* if you want to publish metrics to a custom dashboard for instance.
 
-To start using `Metricano` you need to download at least one of the three Nuget packages available:
+To start using `Metricano` there are three separate Nuget packages available:
 
 #### [Metricano](https://www.nuget.org/packages/Metricano/) ####
 
@@ -26,15 +32,45 @@ If this limit is too low for you, you can [Create](https://github.com/theburning
 
 Once you have downloaded the package, you can start recording metrics like this:
 
+In C#..
 ```csharp
 using Metricano
 
-//...
+// you can track track metrics manually
 MetricsAgent.Default.IncrementCountMetric("NumberOfSocketAccepts");
 MetricsAgent.Default.RecordTimeSpanMetric("SessionDuration", TimeSpan.FromMinutes(session.DurationMins));
+
+// but it's better to use the CountExecutionTime and LogExecutionTime attributes 
+// from the Metricano.PostSharpAspects nuget package (see below)
 ```
 
-Your collected metrics will be published to all configured metrics publishers **every second**. 
+In F#, in addition to tracking metrics manually you can also use the built-in `timeMetric` and `countMetric` workflows..   
+```fsharp
+open Metricano
+
+// the timeMetric workflow captures time taken to execute the code in the workflow  
+let timed = timeMetric "MyMetric" MetricsAgent.Default {
+	Thread.Sleep(10) // pretend to do some IO
+	return()
+}
+
+do timed() // this will record a time metric of 10ms against the metric "MyMetric"
+
+let counted = countMetric "MyOtherMetric" MetricsAgent.Default {
+	do! () 		// this increments the count by 1
+	let! _ = 42 // this increments the count by 1 again
+	return ()
+}
+
+do counted() // this will record the two datapoints above against the metric "MyOtherMetric"
+
+// both timeMetric and countMetric workflows can be nested too
+```
+
+Your collected metrics will be published to all configured metrics publishers **every second**.
+
+The examples you see here all use the **default** agent - `MetricsAgent.Default` - but if you require different pipelines of collecting and publishing metrics, you can also create instances of `IMetricsAgent` using the static method `MetricsAgent.Create`.
+For instance, if you want to record and publish 95 percentile execution time metrics (see the `Metrics.CustomPublisherCs` project under `examples`) for a critical component to a live by-the-second dashboard; whilst all other application metrics are published to a less frequently-updated dashboard such as `Amazon CloudWatch`.
 
 #### [Metricano.CloudWatch](https://www.nuget.org/packages/Metricano.CloudWatch/) ####
 
@@ -93,7 +129,3 @@ public class Program
 - [Bug Tracker](https://github.com/theburningmonk/Metricano/issues)
 - Follow [@theburningmonk](https://twitter.com/theburningmonk) on Twitter for updates
 - Watch this [webinar](http://vimeo.com/39197501) on performance monitoring with AOP and CloudWatch, or see slides [here](http://www.slideshare.net/theburningmonk/performance-monitoring-with-aop-and-amazon-cloudwatch) 
-
-### TL;DR ###
-
-![](http://i.imgur.com/HcPeU9o.gif)
