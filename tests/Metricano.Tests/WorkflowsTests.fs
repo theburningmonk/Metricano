@@ -26,10 +26,10 @@ type ``TimedWorkflow tests`` () =
         metric.Name         |> should equal "TestA"
         metric.Unit         |> should equal "Milliseconds"
         metric.SampleCount  |> should equal 1.0
-        metric.Sum          |> should (equalWithin 1.0) 20.0
-        metric.Max          |> should (equalWithin 1.0) 20.0
-        metric.Min          |> should (equalWithin 1.0) 20.0
-        metric.Average      |> should (equalWithin 1.0) 20.0
+        metric.Sum          |> should (equalWithin 2.0) 20.0
+        metric.Max          |> should (equalWithin 2.0) 20.0
+        metric.Min          |> should (equalWithin 2.0) 20.0
+        metric.Average      |> should (equalWithin 2.0) 20.0
         
     [<Test>]
     member test.``nested timeMetric workflow should capture execution time independently`` () =
@@ -64,10 +64,10 @@ type ``TimedWorkflow tests`` () =
         metric.Name         |> should equal "Parent"
         metric.Unit         |> should equal "Milliseconds"
         metric.SampleCount  |> should equal 1.0
-        metric.Sum          |> should (equalWithin 1.0) 20.0
-        metric.Max          |> should (equalWithin 1.0) 20.0
-        metric.Min          |> should (equalWithin 1.0) 20.0
-        metric.Average      |> should (equalWithin 1.0) 20.0
+        metric.Sum          |> should (equalWithin 2.0) 20.0
+        metric.Max          |> should (equalWithin 2.0) 20.0
+        metric.Min          |> should (equalWithin 2.0) 20.0
+        metric.Average      |> should (equalWithin 2.0) 20.0
 
 [<TestFixture>]
 type ``CountedWorkflow tests`` () =
